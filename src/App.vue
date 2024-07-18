@@ -1,7 +1,6 @@
 <template>
   <div id="app">
     <input type="file" @change="onFileChange" multiple />
-    <button @click="exportLayout">Export Layout</button>
     <div class="canvas" ref="canvas">
       <div
         v-for="(image, index) in images"
@@ -9,16 +8,17 @@
         :style="{ top: image.top + 'px', left: image.left + 'px', width: image.width + 'px', height: image.height + 'px' }"
         class="draggable"
         @mousedown="onDragStart($event, index)"
+        @touchstart="onDragStart($event, index)"
       >
         <img :src="image.url" :style="{ width: '100%', height: '100%' }" />
-        <div class="resize-handle" @mousedown="onResizeStart($event, index, 'se')"></div>
+        <button @click.stop="removeImage(index)">Remove</button>
+        <div class="resize-handle" @mousedown="onResizeStart($event, index)"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import html2canvas from 'html2canvas';
 
 export default {
   data() {
@@ -44,22 +44,28 @@ export default {
       }
     },
     onDragStart(event, index) {
+      const touch = event.touches ? event.touches[0] : event;
       this.draggingImageIndex = index;
-      this.dragStartX = event.clientX - this.images[index].left;
-      this.dragStartY = event.clientY - this.images[index].top;
+      this.dragStartX = touch.clientX - this.images[index].left;
+      this.dragStartY = touch.clientY - this.images[index].top;
       document.addEventListener('mousemove', this.onDrag);
+      document.addEventListener('touchmove', this.onDrag);
       document.addEventListener('mouseup', this.onDragEnd);
+      document.addEventListener('touchend', this.onDragEnd);
     },
     onDrag(event) {
+      const touch = event.touches ? event.touches[0] : event;
       if (this.draggingImageIndex !== null) {
-        this.images[this.draggingImageIndex].top = event.clientY - this.dragStartY;
-        this.images[this.draggingImageIndex].left = event.clientX - this.dragStartX;
+        this.images[this.draggingImageIndex].top = touch.clientY - this.dragStartY;
+        this.images[this.draggingImageIndex].left = touch.clientX - this.dragStartX;
       }
     },
     onDragEnd() {
       this.draggingImageIndex = null;
       document.removeEventListener('mousemove', this.onDrag);
+      document.removeEventListener('touchmove', this.onDrag);
       document.removeEventListener('mouseup', this.onDragEnd);
+      document.removeEventListener('touchend', this.onDragEnd);
     },
     onResizeStart(event, index) {
       event.stopPropagation();
@@ -84,26 +90,20 @@ export default {
       document.removeEventListener('mousemove', this.onResize);
       document.removeEventListener('mouseup', this.onResizeEnd);
     },
-    exportLayout() {
-      const canvas = this.$refs.canvas;
-      html2canvas(canvas).then((canvas) => {
-        const link = document.createElement('a');
-        link.download = 'layout.png';
-        link.href = canvas.toDataURL();
-        link.click();
-      });
+    removeImage(index) {
+      this.images.splice(index, 1);
     },
   },
 };
 </script>
 
-
 <style>
 .canvas {
-  width: 800px;
+  width: 100%;
   height: 600px;
   border: 1px solid #000;
   position: relative;
+  touch-action: none;
 }
 .draggable {
   position: absolute;
@@ -117,5 +117,14 @@ export default {
   bottom: 0;
   right: 0;
   cursor: se-resize;
+}
+button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: red;
+  color: white;
+  border: none;
+  cursor: pointer;
 }
 </style>
